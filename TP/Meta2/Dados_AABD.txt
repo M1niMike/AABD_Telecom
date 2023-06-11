@@ -1,0 +1,150 @@
+
+--Gonçalo
+--CLIENTES
+insert into clientes values(15,TO_DATE('1990-12-09','YYYY-MM-DD'),'Mónica Silva',25120082); 
+insert into clientes values(16,TO_DATE('1992-10-15','YYYY-MM-DD'),'Rafael Carvalho',22423452);
+insert into clientes values(17,TO_DATE('1993-05-13','YYYY-MM-DD'),'João Costa',58060032);
+insert into clientes values(18,TO_DATE('1984-12-09','YYYY-MM-DD'),'Filipa Santos',25120072); 
+insert into clientes values(19,TO_DATE('1995-10-15','YYYY-MM-DD'),'Joel Teixeira',22423442);
+insert into clientes values(20,TO_DATE('1996-05-13','YYYY-MM-DD'),'Verónica Rocha',58061132);
+insert into clientes values(21,TO_DATE('1988-12-09','YYYY-MM-DD'),'Eduardo Lopes',25120262); 
+insert into clientes values(22,TO_DATE('1990-10-15','YYYY-MM-DD'),'Inácio Coelho',22423672);
+insert into clientes values(23,TO_DATE('1991-05-13','YYYY-MM-DD'),'José Pinhal',58060023);
+insert into clientes values(24,TO_DATE('1982-12-09','YYYY-MM-DD'),'Leonor Mendes',13371337); 
+insert into clientes values(25,TO_DATE('1993-10-15','YYYY-MM-DD'),'Débora Lopes',22423489);
+insert into clientes values(26,TO_DATE('1994-05-13','YYYY-MM-DD'),'José Fidalgo',58060000);
+
+
+--PERIODOSFATURACAO
+insert into periodosfaturacao values(1,1,TO_DATE('2023-01-01','YYYY-MM-DD'),TO_DATE('2024-12-31','YYYY-MM-DD'),'PedidoCliente_id_1');
+insert into periodosfaturacao values(2,2,TO_DATE('2023-02-20','YYYY-MM-DD'),TO_DATE('2023-03-28','YYYY-MM-DD'),'PedidoCliente_id_1');
+insert into periodosfaturacao values(3,3,TO_DATE('2023-02-01','YYYY-MM-DD'),TO_DATE('2024-02-02','YYYY-MM-DD'),'PedidoCliente_id_1');
+insert into periodosfaturacao values(4,1,TO_DATE('2023-02-20','YYYY-MM-DD'),TO_DATE('2023-03-28','YYYY-MM-DD'),'PedidoCliente_id_2');
+insert into periodosfaturacao values(5,2,TO_DATE('2023-01-01','YYYY-MM-DD'),TO_DATE('2024-12-31','YYYY-MM-DD'),'PedidoCliente_id_2');
+insert into periodosfaturacao values(6,3,TO_DATE('2023-02-20','YYYY-MM-DD'),TO_DATE('2023-03-28','YYYY-MM-DD'),'PedidoCliente_id_2');
+insert into periodosfaturacao values(7,1,TO_DATE('2023-01-01','YYYY-MM-DD'),TO_DATE('2024-12-31','YYYY-MM-DD'),'PedidoCliente_id_3');
+insert into periodosfaturacao values(8,3,TO_DATE('2023-02-20','YYYY-MM-DD'),TO_DATE('2023-03-28','YYYY-MM-DD'),'PedidoCliente_id_3');
+
+--CHAMADAS
+--instante deve ser timestamp
+insert into chamadas values(1,2,1,1,'Estado',910052213,910052214,0);
+insert into chamadas values(2,2,2,1,'Estado',910052215,910052213,0);
+insert into chamadas values(3,2,3,1,'Estado',910052216,910052212,0);
+insert into chamadas values(4,2,4,1,'Estado',910052217,910052211,0);
+insert into chamadas values(5,2,2,1,'Estado',910052218,910052214,0);
+insert into chamadas values(6,2,5,1,'Estado',910052219,910052215,0);
+insert into chamadas values(7,2,1,1,'Estado',910052210,910052217,0);
+
+
+--CARREGAMENTOS
+--atualmente so se pode efetuar um carregamento por periodosfaturacao, nao faz sentido.
+
+insert into carregamentos values(1,1,TO_DATE('2023-01-01','YYYY-MM-DD'),15);
+insert into carregamentos values(2,3,TO_DATE('2023-02-01','YYYY-MM-DD'),20);
+insert into carregamentos values(3,4,TO_DATE('2023-03-01','YYYY-MM-DD'),10);
+insert into carregamentos values(4,5,TO_DATE('2023-04-01','YYYY-MM-DD'),20.40);
+insert into carregamentos values(5,6,TO_DATE('2023-05-01','YYYY-MM-DD'),15);
+insert into carregamentos values(6,7,TO_DATE('2023-06-01','YYYY-MM-DD'),13);
+
+--FATURAS
+
+insert into faturas values(1,1,TO_DATE('2023-01-31','YYYY-MM-DD'),60.89);
+insert into faturas values(2,2,TO_DATE('2023-02-22','YYYY-MM-DD'),62.89);
+insert into faturas values(3,3,TO_DATE('2023-03-31','YYYY-MM-DD'),66.89);
+insert into faturas values(4,4,TO_DATE('2023-04-30','YYYY-MM-DD'),68.89);
+
+--PEDRO
+insert into cliente values(1,TO_DATE('1989-12-09','YYYY-MM-DD'),'Pedro Brás',25020082); 
+insert into cliente values(2,TO_DATE('1998-10-15','YYYY-MM-DD'),'Micael Almeida',23423452);
+insert into cliente values(3,TO_DATE('1995-05-13','YYYY-MM-DD'),'Gonçalo Cunha',50060032);
+
+
+insert into classificador values(1,'2xxxxxxxx',9,'Fixo Nacional');
+insert into classificador values(2,'9xxxxxxxx',9,'Móvel Nacional');
+insert into classificador values(3,'808xxxxxx',9,'Móvel Nacional');
+insert into classificador values(4, '800xxxxxx',9,'Gratuito');
+insert into classificador values(5, '003512xxxxxxxx',14,'Fixo Nacional');
+insert into classificador values(6, '003519xxxxxxxx',14,'Móvel Nacional');
+insert into classificador values(7,'00x...', 20, 'Internacional');
+
+insert into tarifario values(1,'Voz M01','Voz rede móvel 01',TO_DATE('1997-01-12','YYYY-MM-DD'),'Voz','Móvel Nacional','Inativo','Minuto',0.20);
+insert into tarifario values(2,'Voz M01','Voz rede móvel 01',TO_DATE('2001-01-01','YYYY-MM-DD'),'Voz','Móvel Nacional','Em vigor','Minuto',0.30);
+insert into tarifario values(3,'Voz M02','Voz rede móvel 02',TO_DATE('2001-01-01','YYYY-MM-DD'),'Voz','Móvel Nacional','Em vigor','Minuto',0.25);
+insert into tarifario values(4,'Voz F01','Voz rede fixa 01',TO_DATE('2001-01-01','YYYY-MM-DD'),'Voz','Fixo Nacional','Em vigor','Minuto',0.20);
+insert into tarifario values(5,'SMS S08','SMS 8 cent',TO_DATE('2001-01-01','YYYY-MM-DD'),'SMS','Móvel Nacional','Em vigor','SMS',0.08);
+insert into tarifario values(6,'Notif N1','Notificacao 01',TO_DATE('2001-01-01','YYYY-MM-DD'),'SMS','Móvel Nacional','Em vigor','SMS',0.00);
+
+
+insert into pacotes values(1,'Pack 100min',TO_DATE('01/12/1997','DD/MM/YYYY'),'Voz','Móvel','Inativo',2.00,'Minuto',100,30);
+insert into pacotes values(2,'Pack 100min',TO_DATE('01/01/2001','DD/MM/YYYY'),'Voz','Móvel','Em vigor',2.30,'Minuto',100,30);
+insert into pacotes values(3,'Pack 200min',TO_DATE('01/01/2001','DD/MM/YYYY'),'Voz','Móvel','Em vigor',0.25,'Minuto',200,30);
+insert into pacotes values(4,'Pack voz fixo',TO_DATE('01/01/2001','DD/MM/YYYY'),'Voz','Fixo','Em vigor',0.20,'Minuto',3000,30);
+insert into pacotes values(5,'Pack SMS',TO_DATE('01/01/2001','DD/MM/YYYY'),'SMS','Móvel','Em vigor',0.00,'SMS',3000,30);
+
+insert into campanhas values(1,'Grupo 05','Grupo 5 amigos', 5,TO_DATE('01/12/2017','DD/MM/YYYY'), TO_DATE('01/12/2017','DD/MM/YYYY'),0.30,0.30);
+insert into campanhas values(2,'Grupo Família','Grupo para a Família', 4,TO_DATE('01/01/2021','DD/MM/YYYY'), TO_DATE('01/04/2021','DD/MM/YYYY'),0.40,0.40);
+insert into campanhas values(3,'Grupo 10','Grupo 10 amigos', 10,TO_DATE('01/03/2021','DD/MM/YYYY'), TO_DATE('01/08/2021','DD/MM/YYYY'),0.50,0.50);
+insert into campanhas values(4,'SMS','SMS para 10', 10,TO_DATE('01/06/2021','DD/MM/YYYY'), TO_DATE('01/12/2021','DD/MM/YYYY'),null,1.00);
+
+--insert into associado_a values(1,
+INSERT INTO planos values (1,TO_DATE('01/12/1997','DD/MM/YYYY'),'Pós-pago Simples','PPS 1997',4.99,'Inativo');
+INSERT INTO planos values(2,TO_DATE('01/01/2001','DD/MM/YYYY'),'Pós-pago Simples','PPS 2001', 6,99,'Em vigor');
+INSERT INTO planos values (3,TO_DATE('01/12/1997','DD/MM/YYYY'),'Pós-pago 100/100','PPP 1997 100/100',9.99,'Inativo');
+INSERT INTO planos values (4,TO_DATE('01/01/2001','DD/MM/YYYY'),'Pós-pago 100/100','PPP 2001 100/100',8.99,'Inativo');
+
+
+
+
+--MIKE
+--CLIENTES
+insert into clientes values(4,TO_DATE('1990-01-31','YYYY-MM-DD'),'Violeta Valido Monte',310988560); 
+insert into clientes values(5,TO_DATE('1980-01-02','YYYY-MM-DD'),'Esteban Caeiro Teodoro',313021198);
+insert into clientes values(6,TO_DATE('1977-06-30','YYYY-MM-DD'),'Nathan Raminhos Medeiros',319032531);
+insert into clientes values(7,TO_DATE('1985-03-10','YYYY-MM-DD'),'Aisha Durães Maranhão',311090222); 
+insert into clientes values(8,TO_DATE('1953-02-19','YYYY-MM-DD'),'Fábia Teles Cardim',312642962);
+insert into clientes values(9,TO_DATE('1998-08-11','YYYY-MM-DD'),'Nayr Vilante Paranhos',334116368);
+insert into clientes values(10,TO_DATE('1960-10-15','YYYY-MM-DD'),'Nadia Reis Diegues',349520186); 
+insert into clientes values(11,TO_DATE('1965-05-13','YYYY-MM-DD'),'Ândria Penteado Abasto',392421470);
+insert into clientes values(12,TO_DATE('1965-02-21','YYYY-MM-DD'),'Lisa Malta Caldas',394913922);
+insert into clientes values(13,TO_DATE('1963-05-07','YYYY-MM-DD'),'Sílvio Durão Abelho',325250758); 
+insert into clientes values(14,TO_DATE('1980-02-20','YYYY-MM-DD'),'Amina Aveiro Sesimbra',324402970);
+
+--Pacotes
+insert into pacotes values(6,'Pack 500min',TO_DATE('2022-06-13','YYYY-MM-DD'),'Voz','Móvel','Em vigor',2.00,'Minuto',500,30);
+insert into pacotes values(7,'Pack 1000min',TO_DATE('2021-04-25','YYYY-MM-DD'),'Voz','Móvel','Em vigor',2.30,'Minuto',1000,30);
+insert into pacotes values(8,'Pack Verão',TO_DATE('2022-05-12','YYYY-MM-DD'),'Voz','Móvel','Em vigor',0.25,'Minuto',600,90);
+insert into pacotes values(9,'Pack voz fixo',TO_DATE('2022-07-04','YYYY-MM-DD'),'Voz','Fixo','Em vigor',0.20,'Minuto',3000,30);
+insert into pacotes values(10,'Pack SMS',TO_DATE('2019-10-18','YYYY-MM-DD'),'SMS','Móvel','Inativo',0.15,'SMS',3000,30);
+insert into pacotes values(11,'Pack 100min',TO_DATE('2020-04-24','YYYY-MM-DD'),'Voz','Móvel','Inativo',0.20,'SMS',100,30);
+insert into pacotes values(12,'Pack Covid SMS',TO_DATE('2020-05-17','YYYY-MM-DD'),'SMS','Móvel','Inativo',0.10,'SMS',2500,60);
+insert into pacotes values(13,'Pack Covid Voz+SMS',TO_DATE('2020-05-17','YYYY-MM-DD'),'Voz+SMS','Móvel','Inativo',0.20,'SMS+Voz',5000,60);
+
+--Campanhas
+insert into campanhas values(5,'Grupo 20','Grupo 5 amigos', 5,TO_DATE('2019-05-29','YYYY-MM-DD'), TO_DATE('2020-05-29','YYYY-MM-DD'),0.30,0.30);
+insert into campanhas values(6,'Grupo Escola','Grupo para 5 amigos', 4,TO_DATE('01/01/2021','DD/MM/YYYY'), TO_DATE('01/04/2021','DD/MM/YYYY'),0.40,0.40);
+insert into campanhas values(7,'Grupo Uni','Grupo 5 amigos', 5,TO_DATE('01/03/2021','DD/MM/YYYY'), TO_DATE('01/08/2021','DD/MM/YYYY'),0.50,0.50);
+insert into campanhas values(8,'Grupo Jogos','SMS para 10', 10,TO_DATE('01/06/2021','DD/MM/YYYY'), TO_DATE('01/12/2021','DD/MM/YYYY'),null,1.00);
+insert into campanhas values(9,'Grupo 30','Grupo 10 amigos', 10,TO_DATE('2021-01-01','YYYY-MM-DD'), TO_DATE('2022-01-01','YYYY-MM-DD'),0.50,0.50);
+insert into campanhas values(10,'Grupo Cinema','Grupo 10 amigos', 10,TO_DATE('2022-02-14','YYYY-MM-DD'), TO_DATE('2022-02-28','YYYY-MM-DD'),0.25,0.25);
+insert into campanhas values(11,'Grupo Futebol','Grupo 15 amigos', 15,TO_DATE('2022-05-01','YYYY-MM-DD'), TO_DATE('2022-06-01','YYYY-MM-DD'),0.20,0.20);
+insert into campanhas values(12,'Grupo X','Grupo 5 amigos', 5,TO_DATE('2023-04-01','YYYY-MM-DD'), TO_DATE('2023-05-01','YYYY-MM-DD'),0.10,0.10);
+insert into campanhas values(13,'Grupo Z','Grupo 5 amigos', 5,TO_DATE('2022-09-01','YYYY-MM-DD'), TO_DATE('2023-01-01','YYYY-MM-DD'),0.40,0.40);
+insert into campanhas values(14,'Grupo W','Grupo 5 amigos', 5,TO_DATE('2022-06-01','YYYY-MM-DD'), TO_DATE('2022-07-01','YYYY-MM-DD'),0.15,0.15);
+
+--FATURAS
+insert into faturas values(2,5,TO_DATE('2015-12-15','YYYY-MM-DD'),50.00);
+insert into faturas values(5,3,TO_DATE('2016-07-31','YYYY-MM-DD'),85.50);
+insert into faturas values(6,2,TO_DATE('2017-02-28','YYYY-MM-DD'),29.99);
+insert into faturas values(7,6,TO_DATE('2017-10-15','YYYY-MM-DD'),200.00);
+insert into faturas values(8,8,TO_DATE('2018-06-30','YYYY-MM-DD'),60.00);
+insert into faturas values(9,9,TO_DATE('2018-12-31','YYYY-MM-DD'),120.00);
+insert into faturas values(10,4,TO_DATE('2019-03-15','YYYY-MM-DD'),40.00);
+insert into faturas values(11,1,TO_DATE('2019-09-30','YYYY-MM-DD'),75.00);
+insert into faturas values(12,7,TO_DATE('2020-01-31','YYYY-MM-DD'),100.00);
+insert into faturas values(13,10,TO_DATE('2020-06-15','YYYY-MM-DD'),49.99);
+
+
+--CARREGAMENTOS
+INSERT INTO "LEIAABDG23"."CARREGAMENTO" (ID_CARREGAMENTO, ID_PERIODOFATURACAO, DATA_CAR, VALOR_CAR) VALUES ('2', '13', TO_DATE('2022-07-14 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), '15')
+INSERT INTO "LEIAABDG23"."CARREGAMENTO" (ID_CARREGAMENTO, ID_PERIODOFATURACAO, DATA_CAR, VALOR_CAR) VALUES ('3', '13', TO_DATE('2022-06-13 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), '15')
+INSERT INTO "LEIAABDG23"."CARREGAMENTO" (ID_CARREGAMENTO, ID_PERIODOFATURACAO, DATA_CAR, VALOR_CAR) VALUES ('4', '13', TO_DATE('2022-08-04 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), '15')

@@ -1,0 +1,927 @@
+--A)
+create or replace PROCEDURE a_emite_fatura(
+    p_numero_telefone IN VARCHAR2,
+    p_ano_mes IN VARCHAR2
+)
+IS
+  v_id_chamada NUMBER;
+  v_id_sms NUMBER;
+  v_custo_ch NUMBER;
+  v_custo_sms NUMBER;
+  v_aux_cont NUMBER;
+  v_id_fatura NUMBER;
+  v_adicao_ch NUMBER := 0;
+  v_adicao_sms NUMBER := 0;
+  v_duracao_ch NUMBER;
+  v_id_periodofatu NUMBER;
+  v_saldo_voz NUMBER;
+  v_saldo_sms NUMBER;
+  v_nome_plano VARCHAR(50);
+  v_id_tarifario VARCHAR(50);
+  v_nome_tarifario VARCHAR(50);
+ BEGIN
+
+    IF verifica_numero(TO_NUMBER(p_numero_telefone)) = 0 THEN
+        RAISE_APPLICATION_ERROR(-20501, 'O Número: ' || p_numero_telefone ||' é inexistente');
+    END IF;
+    
+    IF valida_numero(p_numero_telefone) = 'Número inválido' THEN
+        RAISE_APPLICATION_ERROR(-20502, 'O Número: ' || p_numero_telefone ||' é inválido');
+    END IF;
+    
+
+    IF verifica_numero_inativo(TO_NUMBER(p_numero_telefone)) = 1 THEN
+        RAISE_APPLICATION_ERROR(-20511, 'O Número: ' || p_numero_telefone ||' está  inativo');
+    END IF;
+    
+      
+    v_aux_cont := get_contrato(to_number(p_numero_telefone));
+    
+
+  -- Obter a lista de IDs das chamadas dentro do período de tempo
+  FOR ch_loop IN (SELECT DISTINCT ch.id_chamada, ch.duracao_ch
+              FROM chamada ch, periodofaturacao pf, plano p, contrato ct
+              WHERE ch.id_periodofaturacao = pf.id_periodofaturacao
+              AND p.id_plano = ct.id_plano
+              AND pf.id_contrato = v_aux_cont
+              AND ch.remetente_ch = p_numero_telefone
+              AND TO_CHAR(pf.data_inicio_pf, 'YYYY-MM') = p_ano_mes
+              AND p.nome_plano LIKE 'PP%')
+  LOOP
+    v_id_chamada := ch_loop.id_chamada;
+    v_duracao_ch := ch_loop.duracao_ch;
+    
+     -- Chamar a função custo_da_chamada para cada ID de chamada
+    v_custo_ch := b_custo_da_chamada(v_id_chamada);
+    
+    v_adicao_ch := v_adicao_ch + v_custo_ch;
+    
+    DBMS_OUTPUT.PUT_LINE('Custo da chamada ' || v_id_chamada || ': ' || v_custo_ch || ' ' || 'Duracao: ' || v_duracao_ch);
+    
+  END LOOP;  
+    
+    FOR sms_loop IN (SELECT DISTINCT s.id_sms
+              FROM sms s, periodofaturacao pf, plano p, contrato ct
+              WHERE s.id_periodofaturacao = pf.id_periodofaturacao
+              AND p.id_plano = ct.id_plano
+              AND pf.id_contrato = v_aux_cont
+              AND s.remetente_sms = p_numero_telefone
+              AND TO_CHAR(pf.data_inicio_pf, 'YYYY-MM') = p_ano_mes
+              AND p.nome_plano LIKE 'PP%')
+    LOOP
+        v_id_sms := sms_loop.id_sms;
+
+        v_custo_sms := custo_sms(v_id_sms);
+        
+        v_adicao_sms := v_adicao_sms + v_custo_sms;
+        
+        DBMS_OUTPUT.PUT_LINE('Custo do SMS ' || v_id_sms || ': ' || TO_CHAR(v_custo_sms, 'FM0.0'));
+    
+  END LOOP;
+  --seleciona o periodo de faturacao
+    SELECT pf.id_periodofaturacao INTO v_id_periodofatu
+    FROM periodofaturacao pf, contrato ct
+    WHERE ct.id_contrato = pf.id_contrato
+        AND ct.nr_tel = p_numero_telefone
+        AND TO_CHAR(pf.data_inicio_pf, 'YYYY-MM') = p_ano_mes;
+        
+     --seleciona o plano e o id tarifario usado   
+    SELECT p.nome_plano, p.id_tarifario INTO v_nome_plano, v_id_tarifario
+    FROM periodofaturacao pf, contrato ct, plano p
+    WHERE ct.id_contrato = pf.id_contrato
+        AND ct.id_plano = p.id_plano
+        AND ct.nr_tel = p_numero_telefone
+        AND TO_CHAR(pf.data_inicio_pf, 'YYYY-MM') = p_ano_mes;
+    
+    --Seleciona o tarifario    
+    SELECT t.nome_tari INTO v_nome_tarifario
+    FROM periodofaturacao pf, contrato ct, plano p, tarifario t
+    WHERE ct.id_contrato = pf.id_contrato
+        AND ct.id_plano = p.id_plano
+        AND t.id_tarifario = v_id_tarifario
+        AND ct.nr_tel = p_numero_telefone
+        AND TO_CHAR(pf.data_inicio_pf, 'YYYY-MM') = p_ano_mes;
+  
+    SELECT MAX(ID_FATURA) + 1 INTO v_id_fatura FROM FATURA; 
+
+    INSERT INTO FATURA (ID_FATURA, ID_PERIODOFATURACAO, DATA_EMI_FATU, VALOR_FATU)
+    VALUES (v_id_fatura, v_id_periodofatu, SYSDATE, v_adicao_ch+v_adicao_sms);
+    
+     DBMS_OUTPUT.PUT_LINE('Seu Plano é ' || v_nome_plano || ' e seu tarifario é ' || v_nome_tarifario);
+    
+END;
+
+--B)
+create or replace FUNCTION b_custo_da_chamada (idChamada NUMBER)
+RETURN NUMBER
+AS
+    d NUMBER;
+    duracao NUMBER;
+    num_origem NUMBER;
+    num_destino NUMBER;
+    custo_min NUMBER;
+    custo_total NUMBER;
+    chamada NUMBER;
+BEGIN
+     -- Verificação de identificador de chamada  
+     chamada := verifica_chamada(idChamada); 
+     IF chamada = 0 THEN
+        RAISE_APPLICATION_ERROR(-20514, 'Identificador de chamada: ' || idChamada || ' inválido.');
+     END IF;
+     
+     --   Pesquisa para guardar em variáveis, a duração da chamada, quem a recebeu e quem a efetuou. 
+     --   Os números de destino e origem serão usados na função preco_por_minuto.
+     --   A duração para no final simplesmente multiplicar pelo valor dado pela função preco_por_minuto.
+     SELECT  duracao_ch,
+             remetente_ch, 
+             destinatario_ch 
+     INTO    duracao, 
+             num_origem, 
+             num_destino
+     FROM    plano p,
+             tarifario t,
+             chamada ch,
+             contrato ct,
+             periodofaturacao pf
+     WHERE   p.id_plano = ct.id_plano AND
+             t.id_tarifario = p.id_tarifario AND
+             ch.id_periodofaturacao = pf.id_periodofaturacao AND
+             ct.id_contrato = pf.id_contrato AND
+             ch.id_chamada = idChamada;
+    
+     -- Guardar na variável custo_min o preco_por_minuto.
+     custo_min := c_preco_por_minuto2(num_origem,num_destino);
+     -- Retornar a duração (está em minutos nas tabelas) * o custo por minuto.
+     RETURN custo_min*duracao;
+END;
+
+
+--C)
+reate or replace FUNCTION c_preco_por_minuto2(p_numero_origem NUMBER,p_numero_destino NUMBER) 
+RETURN NUMBER
+IS
+    v_tipo_rede VARCHAR2(30);
+    v_preco_minuto NUMBER;
+    v_aux_contrato NUMBER;
+    -- Cursor que contém os preços para os diferentes tipos de comunicação.
+    CURSOR c_preco is
+    SELECT preco_min_internacional as pi, preco_min_movel as pm,preco_min_fixo as pf
+    FROM   preco,
+           tarifario, 
+           plano,
+           contrato
+    WHERE  preco.id_preco = tarifario.id_preco AND 
+           plano.id_tarifario = tarifario.id_tarifario AND
+           plano.id_plano = contrato.id_plano AND
+           contrato.nr_tel = p_numero_origem;
+BEGIN
+    -- Verificar se o número de origem tem contrato associado
+    v_aux_contrato := verifica_numero(p_numero_origem);
+    IF v_aux_contrato = 0 THEN
+        raise_application_error(-20501 , 'O número ' || p_numero_origem || ' não tem contratos associados.');
+    END IF;
+    
+    v_tipo_rede := valida_numero(p_numero_destino);
+    IF v_tipo_rede = 'Número inválido' THEN
+        RAISE_APPLICATION_ERROR(-20502, 'Número de destino: ' || p_numero_destino || ' inválido.');
+    END IF;
+    
+
+    FOR c IN c_preco LOOP
+    -- Calcular o preço por minuto com base no tipo de rede e plano contratado
+    IF v_tipo_rede = 'Internacional' THEN
+          v_preco_minuto := c.pi;
+    ELSIF v_tipo_rede = 'Móvel Nacional' THEN
+          v_preco_minuto := c.pm;
+    ELSIF v_tipo_rede = 'Fixo Nacional' THEN
+          v_preco_minuto := c.pf;       
+    END IF;
+    EXIT;
+  END LOOP;
+
+    RETURN v_preco_minuto;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN NULL; -- Número de origem inválido ou preço não encontrado
+    WHEN OTHERS THEN
+        RETURN NULL; -- Ocorreu um erro ao calcular o preço por minuto
+END;
+
+
+--D)
+create or replace FUNCTION d_tipo_de_chamada_voz (num_telefone VARCHAR) 
+RETURN VARCHAR 
+AS
+    v_tipo_destino VARCHAR(20) NULL;
+    v_aux_contrato NUMBER;
+    v_aux_tarifario NUMBER;
+BEGIN
+
+    v_aux_contrato := verifica_numero(num_telefone);
+    IF v_aux_contrato = 0 THEN
+        raise_application_error(-20501 , 'O número ' || num_telefone || ' não tem contratos associados.');
+    END IF;
+
+    v_tipo_destino := valida_numero(num_telefone);
+    IF v_tipo_destino = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número ' || num_telefone || ' é inválido.');
+    END IF;
+    
+    v_aux_tarifario := verifica_tarifario(num_telefone);
+    IF v_aux_tarifario = 'Inativo' THEN
+        raise_application_error(-20505  , 'O tarifário do ' || num_telefone || ' não está disponível.');
+    END IF;
+    
+    RETURN v_tipo_destino;
+END;
+
+--e_numero_normalizado 
+
+create or replace FUNCTION e_numero_normalizado(numero_telefone IN VARCHAR2) RETURN VARCHAR2 AS
+  num_normalizado VARCHAR2(20);
+  v_aux_num VARCHAR2(20);
+  v_aux_num2 VARCHAR2(20);
+BEGIN
+ 
+    
+  -- remover espaços em branco
+  num_normalizado := REPLACE(numero_telefone, ' ', '');
+
+  -- remover parentesis
+  num_normalizado := REPLACE(num_normalizado, '(', '');
+  num_normalizado := REPLACE(num_normalizado, ')', '');
+
+  -- remover hífens
+  num_normalizado := REPLACE(num_normalizado, '-', '');
+  
+    v_aux_num2 := SUBSTR(num_normalizado, 1,5);
+  
+    v_aux_num := valida_numero(num_normalizado);
+    IF v_aux_num = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número ' || num_normalizado|| ' é inválido.');
+    END IF;
+    
+    
+  IF LENGTH(num_normalizado) > 9 AND v_aux_num2 = '00351' THEN
+    num_normalizado := SUBSTR(num_normalizado, 6);
+    RETURN num_normalizado;
+
+  
+  END IF;
+    
+  RETURN num_normalizado;
+END;
+
+
+--F)
+create or replace PROCEDURE f_envia_SMS (
+  i_remetente_sms IN NUMBER,
+  i_destinatario_sms IN NUMBER,
+  i_mensagem IN VARCHAR
+)
+AS
+  v_id_sms NUMBER;
+  v_aux_contrato_r NUMBER;
+  v_aux_contrato_d NUMBER;
+  v_aux_nr_r VARCHAR(20);
+  v_aux_nr_d VARCHAR(20);
+  v_saldo NUMBER;
+BEGIN
+    
+   v_aux_contrato_r := verifica_numero(i_remetente_sms);
+    v_aux_contrato_d := verifica_numero(i_destinatario_sms);
+    
+    IF v_aux_contrato_r + v_aux_contrato_d = 0 THEN
+        raise_application_error(-20501 , 'Nenhum dos números: ' || i_remetente_sms || ' ' || i_destinatario_sms || ' tem contratos associados.');
+    END IF;
+    
+    v_aux_nr_r := valida_numero(to_char(i_remetente_sms));
+    v_aux_nr_d := valida_numero(to_char(i_destinatario_sms));
+    
+    
+    IF v_aux_nr_r = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número do remetente ' || i_remetente_sms || ' é inválido.'); 
+    ELSIF v_aux_nr_d = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número do destinatário ' || i_destinatario_sms || ' é inválido.');
+    END IF;
+    
+    
+    v_saldo := j_get_saldo(i_remetente_sms, 'Sms');
+    
+    IF v_saldo <= 0 THEN
+        raise_application_error(-20508 , 'O número do remetente ' || i_remetente_sms || 'está sem saldo.');
+    END IF;
+    
+    IF verifica_numero(i_remetente_sms) = 0 THEN
+        raise_application_error(-20511 , 'O número do remetente ' || i_remetente_sms || 'está inativo.');
+    END IF;
+    
+  -- Gera um novo ID para o SMS
+  SELECT MAX(ID_SMS) + 1 INTO v_id_sms FROM SMS;
+
+  -- Insere o SMS na tabela
+  INSERT INTO SMS (ID_SMS, ID_CLASSIFICADOR, ID_PERIODOFATURACAO, REMETENTE_SMS, DESTINATARIO_SMS, MENSAGEM)
+  VALUES (v_id_sms, get_classificador(TO_CHAR(i_destinatario_sms)), get_periodo_faturacao(i_remetente_sms), i_remetente_sms, i_destinatario_sms, i_mensagem);
+
+  -- Regista o envio da mensagem
+  INSERT INTO EVENTO_SMS (ID_EVENTO, ID_SMS, INSTANTE_SMS)
+  VALUES (1, v_id_sms, SYSTIMESTAMP);
+END;
+
+
+--G)
+create or replace PROCEDURE g_estabelece_chamada (
+    num_de_origem VARCHAR,
+    num_de_destino VARCHAR
+)
+AS
+    v_id_chamada NUMBER;
+    v_tipo_destino VARCHAR(20);
+    v_num_origem Number;
+    v_num_destino NUMBER;
+    v_aux_nr_o VARCHAR(20);
+    v_aux_nr_d VARCHAR(20);
+    v_saldo NUMBER;
+    total number;
+BEGIN
+    
+    IF verifica_numero(TO_NUMBER(num_de_origem)) = 0 THEN
+        raise_application_error(-20501 , 'O número de origem ' || num_de_origem || ' não existe.');
+    END IF;
+    
+    
+    v_aux_nr_o := valida_numero(num_de_origem);
+    v_aux_nr_d := valida_numero(num_de_destino);
+    
+    IF v_aux_nr_o = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número do remetente ' || num_de_origem || ' é inválido.');   
+    ELSIF v_aux_nr_d = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número do destinatário ' || num_de_destino || ' é inválido.');
+    END IF;
+    
+    
+    v_saldo := j_get_saldo(num_de_origem, 'Voz');
+    
+    IF v_saldo <= 0 THEN
+        raise_application_error(-20508 , 'O número de origem ' || num_de_origem || ' está sem saldo.');
+    END IF;
+    
+    IF verifica_numero_inativo(TO_NUMBER(num_de_origem)) = 0 THEN
+        raise_application_error(-20511 , 'O número de origem ' || num_de_origem || 'está inativo.');
+    END IF;
+    
+
+    -- Registra a chamada
+    SELECT MAX(id_chamada) + 1 INTO v_id_chamada FROM chamada;
+    
+    INSERT INTO chamada (id_chamada,id_classificador,id_periodofaturacao, remetente_ch, destinatario_ch)
+    VALUES (v_id_chamada,(select get_classificador(num_de_destino) from dual), (select get_periodo_faturacao(num_de_origem) from dual), num_de_origem, num_de_destino);
+
+    -- Registra o evento de chamada iniciada
+    INSERT INTO evento_chamada (id_chamada, id_evento, instante_ch)
+    VALUES (v_id_chamada, 4, SYSDATE);
+
+
+END;
+
+
+--H)
+create or replace FUNCTION h_pode_realizar_a_chamada(
+    p_numero_origem NUMBER,
+    p_numero_destino NUMBER
+) RETURN VARCHAR2
+IS
+    v_saldo_voz NUMBER;
+    v_tipo_rede VARCHAR2(30);
+    v_aux_contrato NUMBER;
+BEGIN
+    
+    v_aux_contrato := verifica_numero(p_numero_origem);
+    IF v_aux_contrato = 0 THEN
+        raise_application_error(-20501 , 'O número ' || p_numero_origem || ' não tem contratos associados.');
+    END IF;
+    
+    v_tipo_rede := valida_numero(p_numero_destino);
+    IF v_tipo_rede = 'Número inválido' THEN
+        RAISE_APPLICATION_ERROR(-20502, 'Número de destino: ' || p_numero_destino || ' inválido.');
+    END IF;
+
+    -- Verificar o saldo de voz do número de origem
+    SELECT SALDO_MIN INTO v_saldo_voz
+    FROM SALDO
+    WHERE ID_CONTRATO = (select get_contrato(p_numero_origem) from dual);
+
+    -- Verificar se o saldo de voz é suficiente para realizar a chamada
+    IF v_saldo_voz > 0 THEN
+        -- Consultar o tipo de rede do número de destino
+        RETURN v_tipo_rede;
+    ELSE
+        RETURN 'Saldo insuficiente para realizar a chamada.';
+    END IF;
+END;
+
+
+--I)
+create or replace TRIGGER i_atualiza_saldo
+AFTER INSERT ON evento_chamada
+FOR EACH ROW
+DECLARE
+    v_id_chamada NUMBER;
+    v_custo_chamada NUMBER;
+    v_id_contrato NUMBER;
+BEGIN
+    -- Ir buscar chamada
+    SELECT chamada.id_chamada
+    INTO v_id_chamada
+    FROM chamada, evento
+    WHERE chamada.id_chamada = :NEW.id_chamada
+    AND :NEW.id_chamada = chamada.id_chamada
+    AND :NEW.id_evento = evento.id_evento
+    AND evento.designacao_evento = 'Terminada';
+
+    -- Ir buscar contrato da chamada
+    SELECT contrato.id_contrato
+    INTO v_id_contrato
+    FROM contrato, periodofaturacao, chamada
+    WHERE chamada.id_chamada = v_id_chamada
+    AND chamada.id_periodofaturacao = periodofaturacao.id_periodofaturacao
+    AND periodofaturacao.id_contrato = contrato.id_contrato;
+
+    -- Custo da chamada
+    v_custo_chamada := B_CUSTO_DA_CHAMADA(v_id_chamada);
+
+    -- Atualizar saldo
+    UPDATE saldo
+    SET saldo_valor = saldo_valor - v_custo_chamada
+    WHERE id_contrato = v_id_contrato;
+END;
+
+
+--J)
+create or replace FUNCTION j_get_saldo(
+    num_telefone VARCHAR,
+    tipo_saldo VARCHAR DEFAULT 'Valor'
+) RETURN NUMBER
+IS
+    saldo NUMBER;
+    v_aux_contrato NUMBER;
+    v_aux_numero VARCHAR2(20) NULL;
+BEGIN
+
+    SELECT valida_numero(num_telefone) INTO v_aux_numero FROM dual;
+    
+    IF v_aux_numero = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número ' || num_telefone || ' é inválido.');
+    END IF;
+--
+    SELECT verifica_numero(num_telefone) INTO v_aux_contrato FROM dual;
+    
+    IF v_aux_contrato = 0 THEN
+        raise_application_error(-20501 , 'O número ' || num_telefone || ' não tem contratos associados.');
+    END IF;
+    
+
+     IF tipo_saldo = 'Valor' THEN
+        SELECT s.saldo_valor INTO saldo
+        FROM saldo s, contrato c
+        WHERE s.id_contrato = c.id_contrato
+        AND c.nr_tel = num_telefone
+        AND c.estado_contrato ='Ativo';
+    ELSIF tipo_saldo = 'Voz' THEN
+        SELECT s.saldo_min INTO saldo
+        FROM saldo s, contrato c
+        WHERE s.id_contrato = c.id_contrato
+        AND c.nr_tel = num_telefone
+        AND c.estado_contrato ='Ativo';
+    ELSIF tipo_saldo = 'Sms' THEN
+        SELECT s.saldo_sms INTO saldo
+        FROM saldo s, contrato c
+        WHERE s.id_contrato = c.id_contrato
+        AND c.nr_tel = num_telefone
+        AND c.estado_contrato ='Ativo';
+    ELSE
+       RAISE_APPLICATION_ERROR(-20519 ,  CHR(10) || tipo_saldo || ' é um tipo saldo inválido. Valores possíveis:' || CHR(10) || 'Valor' || CHR(10) || 'Sms' || CHR(10) || 'Voz');
+
+    END IF;
+
+    RETURN saldo;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20520 ,'O tipo de saldo escolhido não faz sentido para o plano associado ao número ' || num_telefone ||'.');
+        RETURN NULL;
+END;
+
+
+--K)
+create or replace PROCEDURE k_novo_contrato (
+    nif_cliente IN NUMBER,
+    nome_pl IN VARCHAR,
+    periodo_meses IN NUMBER,
+    nome_cliente IN VARCHAR
+) AS
+    v_id_contrato NUMBER;
+    v_id_cliente NUMBER;
+    v_id_plano NUMBER := 5;
+    v_nr_tel  NUMBER := 3;
+    v_count NUMBER;
+    v_aux_nif number;
+BEGIN
+    
+    IF valida_NIF(nif_cliente) = 0 THEN
+        RAISE_APPLICATION_ERROR(-20518 , 'NIF: ' || nif_cliente || ' inválido');
+    END IF;
+    
+    IF verifica_plano(nome_pl) = 0 THEN
+        RAISE_APPLICATION_ERROR(-20517 , 'O Plano: ' || nome_pl || ' é inválido');
+    END IF;
+    
+    IF verifica_planoExistente(nome_pl) = 0 THEN
+        RAISE_APPLICATION_ERROR(-20516 , 'O Plano: ' || nome_pl || ' não existe');
+    END IF;
+    
+    SELECT id_cliente INTO v_id_cliente FROM cliente WHERE nif = nif_cliente;
+
+    -- Encontra o ID do plano com base no nome fornecido (em maiúsculas)
+    SELECT id_plano INTO v_id_plano FROM plano WHERE UPPER(nome_plano) = UPPER(nome_pl);
+
+    -- Gera um número de telefone aleatório que não esteja em uso na tabela de contratos
+    LOOP
+        v_nr_tel := gerar_numero();
+        SELECT COUNT(*) INTO v_count FROM contrato WHERE nr_tel = v_nr_tel;
+        EXIT WHEN v_count = 0;
+    END LOOP;
+
+    -- Insere um novo contrato na tabela
+    SELECT MAX(id_contrato) + 1 INTO v_id_contrato FROM contrato;
+
+    INSERT INTO contrato (id_contrato, id_cliente, id_plano, data_emi_cont, nr_tel, data_fim_cont, tipo_fid, estado_contrato)
+    VALUES (v_id_contrato, v_id_cliente, v_id_plano, SYSDATE, v_nr_tel, ADD_MONTHS(SYSDATE, periodo_meses), periodo_meses, 'Ativo');
+
+
+    -- Envia uma mensagem de texto de boas-vindas para o novo número de telefone
+    f_envia_sms(0, v_nr_tel, 'Bem vindo ' || nome_cliente || '!');
+END;
+
+--L)
+create or replace TRIGGER l_carrega_cartao_prepago
+AFTER INSERT ON carregamento -- nome da tabela onde são registrados os carregamentos
+FOR EACH ROW
+DECLARE
+  v_saldo_valor NUMBER;
+  v_preco_min_movel NUMBER;
+  v_preco_sms_movel NUMBER;
+  v_tipo_duracao VARCHAR(50);
+  v_proximo_id NUMBER;
+  v_id_contrato NUMBER;
+    v_data_fim_pf DATE;
+BEGIN
+
+  SELECT s.saldo_valor INTO v_saldo_valor
+  FROM saldo s, contrato c, plano p, periodofaturacao pf
+  WHERE s.id_contrato = c.id_contrato
+    AND c.id_plano = p.id_plano
+    AND c.id_contrato = pf.id_contrato
+    AND p.nome_plano LIKE 'PreP%';
+
+  SELECT DISTINCT pf.observacoes INTO v_tipo_duracao
+  FROM periodofaturacao pf, contrato c, plano p, saldo s
+  WHERE pf.id_contrato = c.id_contrato
+    AND c.id_contrato = s.id_contrato
+    AND c.id_plano = p.id_plano
+    AND p.nome_plano LIKE 'PreP%'
+    AND c.estado_contrato LIKE 'Ativo';
+
+  SELECT c.id_contrato INTO v_id_contrato
+  FROM contrato c, plano p, saldo s
+  WHERE c.id_plano = p.id_plano
+    AND s.id_contrato = c.id_contrato
+    AND p.nome_plano LIKE 'PreP%'
+    AND c.estado_contrato LIKE 'Ativo';
+
+  IF v_tipo_duracao = 'Trimestral' THEN
+    v_data_fim_pf := ADD_MONTHS(SYSDATE, 3);
+  ELSIF v_tipo_duracao = 'Mensal' THEN
+    v_data_fim_pf := ADD_MONTHS(SYSDATE, 1);
+  END IF;
+
+  SELECT NVL(MAX(id_periodofaturacao), 0) + 1 INTO v_proximo_id
+  FROM periodofaturacao;
+  
+  v_data_fim_pf := ADD_MONTHS(SYSDATE, 3);
+
+  -- Atualiza o saldo acumulado de acordo com o valor do carregamento
+  UPDATE saldo
+  SET saldo.saldo_valor = v_saldo_valor + :NEW.valor_car
+  WHERE saldo.id_contrato = v_id_contrato;
+
+
+  -- Registra o início do novo período de faturação
+  INSERT INTO periodofaturacao (id_periodofaturacao, id_contrato, data_inicio_pf, data_fim_pf, observacoes)
+  VALUES (v_proximo_id,v_id_contrato, SYSDATE, v_data_fim_pf, v_tipo_duracao);
+END;
+
+--FUNCAO 2019112744
+
+create or replace FUNCTION  M_FUNC_2019112744(
+    num_origem IN VARCHAR,
+    num_destino IN VARCHAR,
+    p_faturacao IN NUMBER
+) RETURN NUMBER
+IS
+    v_duracao NUMBER;
+BEGIN
+
+    IF verifica_numero(TO_NUMBER(num_origem)) = 0 THEN
+        raise_application_error(-20501 , 'O número de origem ' || num_origem || ' não existe.');
+    END IF;
+
+    IF valida_numero(num_origem) = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número de origem ' || num_origem || ' é inválido.');   
+    ELSIF valida_numero(num_destino) = 'Número inválido' THEN
+        raise_application_error(-20502 , 'O número de destino ' || num_destino || ' é inválido.');
+    END IF;
+        
+    SELECT ch.duracao_ch INTO v_duracao
+    FROM chamada ch, evento_chamada evc, evento e
+    WHERE ch.id_chamada = evc.id_chamada
+        AND evc.id_evento = e.id_evento
+        AND ch.remetente_ch = num_origem
+        AND ch.destinatario_ch = num_destino
+        AND ch.id_periodofaturacao = p_faturacao
+        AND e.designacao_evento = 'Terminada';
+        
+        
+
+    RETURN v_duracao;
+END;
+
+--PROCEDURE 2019112744
+
+create or replace PROCEDURE N_PROC_2019112744(
+    v_contrato_id IN NUMBER,
+    v_novo_telefone IN VARCHAR2
+)
+IS
+    var_aux_id NUMBER;
+BEGIN
+
+    UPDATE contrato
+    SET nr_tel = v_novo_telefone
+    WHERE contrato.id_contrato = v_contrato_id;
+
+    COMMIT;
+
+    DBMS_OUTPUT.PUT_LINE('Número de telefone atualizado com sucesso.');
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Cliente não encontrado.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Erro ao atualizar o número de telefone: ' || SQLERRM);
+        ROLLBACK;
+END;
+
+--TRIGGER 2019112744
+
+create or replace TRIGGER O_TRIG_2019112744
+BEFORE INSERT ON contrato
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+   SELECT COUNT (*) INTO v_count
+   FROM contrato
+   WHERE contrato.id_cliente = :new.id_cliente
+        AND contrato.nr_tel = :new.nr_tel;
+
+    IF v_count = 0 THEN
+        RAISE_APPLICATION_ERROR(-20555, 'Número de telefone já está sendo usado por outro cliente.');
+    END IF;
+
+END;
+
+-- FUNCAO 2017008938
+
+create or replace FUNCTION M_FUNC_2017008938(
+    id_ct NUMBER,
+    data_param_inicio IN DATE,
+    data_param_fim IN DATE
+)
+RETURN NUMBER
+IS
+    total_chamadas NUMBER := 0;
+BEGIN
+
+    IF verifica_contrato(id_ct) = 0 THEN
+        raise_application_error(-20530 , 'O contrato ' || id_ct || ' não existe.');
+    END IF;
+    
+    SELECT COUNT(id_chamada)
+    INTO total_chamadas
+    from chamada ch, periodofaturacao pf
+    where ch.id_periodofaturacao = pf.id_periodofaturacao and
+         pf.id_contrato = id_ct AND
+         data_inicio_pf BETWEEN data_param_inicio AND data_param_fim AND
+         data_fim_pf < data_param_fim;
+
+    RETURN total_chamadas;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN 0; -- Trate ou registre o erro conforme necessário
+END;
+
+-- PROCEDURE 2017008938
+
+create or replace PROCEDURE N_PROC_2017008938(
+    nome_cli IN VARCHAR2,
+    data_cli IN DATE,
+    NIF_cli IN NUMBER,
+    loc_cli IN VARCHAR2
+)
+AS
+    contrato VARCHAR2(10);
+    nome_plano VARCHAR2(100);
+    v_periodo NUMBER;
+    v_aux NUMBER;
+BEGIN
+
+    IF verifica_NIF(NIF_cli) = 0 THEN
+        raise_application_error(-20525 , 'O cliente com o NIF ' || NIF_cli || ' já está registado.');
+    END IF;
+
+    select max(id_cliente) + 1 into v_aux from cliente;
+    
+    -- Inserir o novo cliente na tabela de clientes
+    INSERT INTO cliente (id_cliente,data_nasc,nome_cliente, nif, localidade)
+    VALUES (v_aux,data_cli,nome_cli, NIF_cli, loc_cli);
+
+    -- Solicitar ao usuário para indicar se deseja adicionar um contrato
+    DBMS_OUTPUT.PUT_LINE('Deseja adicionar um contrato? (sim/nao)');
+   
+    contrato := UPPER(TRIM('&contrato'));
+
+    IF contrato = 'SIM' THEN
+        -- Solicitar ao usuário o nome do plano que deseja contratar
+        DBMS_OUTPUT.PUT_LINE('Digite o nome do plano que deseja contratar:');
+        nome_plano := UPPER(TRIM('&nome_plano'));
+        DBMS_OUTPUT.PUT_LINE('Digite o periodo de meses (12/24):');
+        v_periodo := '&v_periodo';
+        
+        k_novo_contrato(NIF_cli,nome_plano,v_periodo,nome_cli);
+
+        DBMS_OUTPUT.PUT_LINE('Contrato adicionado com sucesso!');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Procedimento concluído sem adição de contrato.');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Ocorreu um erro: ' || SQLERRM);
+END;
+
+-- TRIGGER 2017008938
+
+create or replace TRIGGER O_TRIG_2017008938
+AFTER INSERT OR UPDATE ON saldo
+FOR EACH ROW
+DECLARE
+   sms_lim NUMBER := 20;
+   voz_lim NUMBER := 30;
+   val_lim NUMBER := 1;
+   v_aux NUMBER;
+BEGIN
+
+   
+   
+   IF :NEW.saldo_sms < sms_lim THEN
+      f_envia_sms_2(:NEW.id_contrato,'Tem apenas 20 sms de saldo, recarregue :)');
+   END IF;
+
+   IF :NEW.saldo_min < voz_lim THEN
+      f_envia_sms_2(:NEW.id_contrato,'Tem apenas 30 minutos de saldo, recarregue :)');
+   END IF;
+
+   IF :NEW.saldo_valor < val_lim THEN
+      f_envia_sms_2(:NEW.id_contrato,'Tem apenas 1 euro de saldo, recarregue :)');
+   END IF;
+END;
+
+-- FUNCAO 2017012641
+
+create or replace FUNCTION M_FUNC_2017012641(plano_nome IN VARCHAR2)
+RETURN NUMBER IS
+--A abordagem proposta no check2 nao faz qualquer sentido, como estava
+--muito presente ainda o conceito de view acabou por nao fazer sentido a minha abordagem.
+--nesse sentido fiz uma funcao que se considera muito mais util sem abandonar o contexto referido no check2.
+--Esta funcao pode ser utilizada em procedures para mostrar por exemplo ao utilizador métricas de vendas.
+
+  contador NUMBER := 0;
+BEGIN
+  SELECT COUNT(*)
+  INTO contador
+  FROM contrato c
+  JOIN plano p ON c.id_plano = p.id_plano
+  WHERE p.nome_plano = plano_nome
+    AND TO_CHAR(c.data_emi_cont, 'YYYY') = TO_CHAR(SYSDATE, 'YYYY');
+
+  RETURN contador;
+END;
+
+-- PROCEDURE 2017012641
+
+create or replace PROCEDURE N_PROC_2017012641
+AS
+    p_plano_id plano.id_plano%TYPE;
+    p_contrato_id contrato.id_contrato%TYPE;
+    p_cliente_id cliente.id_cliente%TYPE;
+
+BEGIN
+    --Selecionar aleatoriamente um cliente dos top 5 clientes.
+    select alias_dois.idclientealias
+    into p_cliente_id
+    from (
+        select alias_um.idcliente idclientealias
+        from (
+            select count(chamada.id_chamada) as nchamadas, cliente.id_cliente as idcliente
+                from chamada, periodofaturacao, contrato, cliente
+                where chamada.id_periodofaturacao = periodofaturacao.id_periodofaturacao
+                and periodofaturacao.id_contrato = contrato.id_contrato
+                and contrato.id_cliente = cliente.id_cliente
+                group by cliente.id_cliente
+                order by 1 desc) alias_um
+                where rownum <=5
+                order by dbms_random.value) alias_dois
+    where rownum <=1;
+
+
+    --Selecionar plano de descontos atual
+    select plano.id_plano
+    into p_plano_id
+    from plano
+    where nome_plano = 'DESCONTO%TOP5';
+
+    --Associar plano de descontos ao utilizador escolhido.
+    update contrato
+    set contrato.id_plano = p_plano_id
+    where contrato.id_cliente = p_cliente_id;
+
+    commit;
+
+    dbms_output.put_line('Plano  de descontos associado ao utilizador: ' || p_cliente_id);
+END;
+
+-- TRIGGER 2017012641
+
+create or replace TRIGGER O_TRIG_2017012641
+AFTER INSERT ON rescisao
+FOR EACH ROW
+DECLARE
+    v_custo_chamada NUMBER := 0; -- Inicializar as variáveis
+    v_custo_sms NUMBER := 0;
+BEGIN
+    -- Desativar Contrato;
+    UPDATE contrato
+    SET estado_contrato = 'Inativo'
+    WHERE id_contrato = :new.id_contrato;
+
+    -- Corrigir Saldo;
+    UPDATE saldo
+    SET saldo_sms = 0,
+        saldo_min = 0,
+        saldo_valor = 0
+    WHERE id_contrato = :new.id_contrato;
+
+    -- Emitir Faturas;
+    FOR pf IN(
+        SELECT periodofaturacao.id_periodofaturacao as pfaux
+        FROM periodofaturacao
+        WHERE periodofaturacao.id_contrato = :new.id_contrato
+    )
+    LOOP
+
+        FOR ch IN(
+            SELECT chamada.id_chamada as chaux
+            FROM chamada
+            WHERE chamada.id_periodofaturacao = pf.pfaux
+        )
+        LOOP
+
+            v_custo_chamada := v_custo_chamada + b_custo_da_chamada(ch.chaux);
+
+        END LOOP;
+
+        FOR sms IN(
+            SELECT sms.id_sms as smsaux
+            FROM sms
+            WHERE sms.id_periodofaturacao = pf.pfaux
+        )
+        LOOP
+
+            v_custo_sms := v_custo_sms + custo_sms(sms.smsaux);
+
+        END LOOP;
+
+        INSERT INTO fatura
+        VALUES(SEQ_FATURA.nextval, pf.pfaux, sysdate, v_custo_sms + v_custo_chamada);
+
+    END LOOP;
+END;
+

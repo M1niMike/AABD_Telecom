@@ -1,0 +1,437 @@
+/*==============================================================*/
+/* Table: ATENDIDA                                              */
+/*==============================================================*/
+create table ATENDIDA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CHAMADA           NUMBER               not null,
+   constraint PK_ATENDIDA primary key (ID_TELEMOVEL, ID_CHAMADA)
+);
+
+/*==============================================================*/
+/* Table: CAMPANHA                                              */
+/*==============================================================*/
+create table CAMPANHA 
+(
+   ID_CAMPANHA          NUMBER               not null,
+   NOME_CAMP            VARCHAR(30),
+   DESIGNACAO_CAMP      VARCHAR(100),
+   NUM_MAX_AMIGOS       NUMBER,
+   DATA_INICIO          DATE,
+   DATA_FIM             DATE,
+   DESCONTO_VOZ         NUMBER,
+   DESCONTO_SMS         NUMBER,
+   constraint PK_CAMPANHA primary key (ID_CAMPANHA)
+);
+
+/*==============================================================*/
+/* Table: CHAMADAS                                              */
+/*==============================================================*/
+create table CHAMADAS 
+(
+   ID_CHAMADA           NUMBER               not null,
+   ID_CLASSIFICADOR     NUMBER,
+   ESTADOS_CH           VARCHAR(30),
+   REMETENTE_CH         NUMBER,
+   DESTINATARIO_CH      NUMBER,
+   INSTANTE_CH          NUMBER,
+   constraint PK_CHAMADAS primary key (ID_CHAMADA)
+);
+
+/*==============================================================*/
+/* Table: CLASSIFICADOR                                         */
+/*==============================================================*/
+create table CLASSIFICADOR 
+(
+   ID_CLASSIFICADOR     NUMBER               not null,
+   PREFIXO              VARCHAR(50),
+   NUM_DIGITOS          NUMBER,
+   REDE                 VARCHAR(30),
+   constraint PK_CLASSIFICADOR primary key (ID_CLASSIFICADOR)
+);
+
+/*==============================================================*/
+/* Table: CLIENTE                                               */
+/*==============================================================*/
+create table CLIENTE 
+(
+   ID_CLIENTE           NUMBER               not null,
+   DATA_NASC            DATE,
+   NOME_CLIENTE         VARCHAR(30),
+   NIF                  NUMBER				not null,
+   constraint PK_CLIENTE primary key (ID_CLIENTE),
+   constraint UK_NIF  unique(NIF)
+);
+
+/*==============================================================*/
+/* Table: CONTRATO                                              */
+/*==============================================================*/
+create table CONTRATO 
+(
+   ID_CONTRATO          NUMBER               not null,
+   ID_CLIENTE           NUMBER               not null,
+   ID_PLANO             NUMBER,
+   DATA_EMI_CONT        DATE,
+   INFO_CONT            VARCHAR(100),
+   constraint PK_CONTRATO primary key (ID_CONTRATO)
+);
+
+/*==============================================================*/
+/* Table: EFETUADA                                              */
+/*==============================================================*/
+create table EFETUADA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CHAMADA           NUMBER               not null,
+   constraint PK_EFETUADA primary key (ID_TELEMOVEL, ID_CHAMADA)
+);
+
+/*==============================================================*/
+/* Table: ENVIADA                                               */
+/*==============================================================*/
+create table ENVIADA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_SMS               NUMBER               not null,
+   constraint PK_ENVIADA primary key (ID_TELEMOVEL, ID_SMS)
+);
+
+/*==============================================================*/
+/* Table: FATURA                                                */
+/*==============================================================*/
+create table FATURA 
+(
+   ID_FATURA            NUMBER               not null,
+   ID_CONTRATO          NUMBER               not null,
+   DATA_EMI_FATU        DATE,
+   VALOR_FATU           NUMBER,
+   constraint PK_FATURA primary key (ID_FATURA)
+);
+
+/*==============================================================*/
+/* Table: GRUPO                                                 */
+/*==============================================================*/
+create table GRUPO 
+(
+   NUM_TELEMOVEL_GRU    NUMBER               not null,
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CAMPANHA          NUMBER               not null,
+   constraint PK_GRUPO primary key (NUM_TELEMOVEL_GRU, ID_TELEMOVEL, ID_CAMPANHA)
+);
+
+/*==============================================================*/
+/* Table: NAO_ATENDIDA                                          */
+/*==============================================================*/
+create table NAO_ATENDIDA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CHAMADA           NUMBER               not null,
+   constraint PK_NAO_ATENDIDA primary key (ID_TELEMOVEL, ID_CHAMADA)
+);
+
+/*==============================================================*/
+/* Table: NAO_EFETUADA                                          */
+/*==============================================================*/
+create table NAO_EFETUADA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CHAMADA           NUMBER               not null,
+   constraint PK_NAO_EFETUADA primary key (ID_TELEMOVEL, ID_CHAMADA)
+);
+
+/*==============================================================*/
+/* Table: NAO_ENVIADAS                                          */
+/*==============================================================*/
+create table NAO_ENVIADAS 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_SMS               NUMBER               not null,
+   constraint PK_NAO_ENVIADAS primary key (ID_TELEMOVEL, ID_SMS)
+);
+
+/*==============================================================*/
+/* Table: NAO_RECEBIDAS                                         */
+/*==============================================================*/
+create table NAO_RECEBIDAS 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_SMS               NUMBER               not null,
+   constraint PK_NAO_RECEBIDAS primary key (ID_TELEMOVEL, ID_SMS)
+);
+
+/*==============================================================*/
+/* Table: NUMERO_TELEMOVEL                                      */
+/*==============================================================*/
+create table NUMERO_TELEMOVEL 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CLIENTE           NUMBER,
+   NUM_NORMALIZADO      NUMBER,
+   NUM_TELEMOVEL        NUMBER,
+   ESTADO_TML           VARCHAR(30),
+   constraint PK_NUMERO_TELEMOVEL primary key (ID_TELEMOVEL)
+);
+
+/*==============================================================*/
+/* Table: PACOTES                                               */
+/*==============================================================*/
+create table PACOTES 
+(
+   ID_PACOTE            NUMBER               not null,
+   DESIGNACAO_PAC       CHAR(100),
+   DATA_LANC_PAC        DATE,
+   TIPO_PAC             VARCHAR(30),
+   REDE_PAC             VARCHAR(30),
+   ESTADO_PAC           VARCHAR(30),
+   PRECO_PAC            NUMBER,
+   UNIDADE_PAC          VARCHAR(30),
+   QUANTIDADE_PAC       NUMBER,
+   PERIODO_PAC          NUMBER,
+   constraint PK_PACOTES primary key (ID_PACOTE)
+);
+
+/*==============================================================*/
+/* Table: PARTICIPA                                             */
+/*==============================================================*/
+create table PARTICIPA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_CAMPANHA          NUMBER               not null,
+   constraint PK_PARTICIPA primary key (ID_TELEMOVEL, ID_CAMPANHA)
+);
+
+/*==============================================================*/
+/* Table: PEDE                                                  */
+/*==============================================================*/
+create table PEDE 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_PACOTE            NUMBER               not null,
+   constraint PK_PEDE primary key (ID_TELEMOVEL, ID_PACOTE)
+);
+
+/*==============================================================*/
+/* Table: PLANOS                                                */
+/*==============================================================*/
+create table PLANOS 
+(
+   ID_PLANO             NUMBER               not null,
+   ID_TARIFARIO         NUMBER,
+   DATA_PLANO           DATE,
+   DESIGNACAO_PLANO     VARCHAR(100),
+   NOME_PLANO           VARCHAR(30),
+   VALOR_SERVICO        NUMBER,
+   ESTADO_PLANO         VARCHAR(30),
+   constraint PK_PLANOS primary key (ID_PLANO)
+);
+
+/*==============================================================*/
+/* Table: POS_PAGO_PLAFOND                                      */
+/*==============================================================*/
+create table POS_PAGO_PLAFOND 
+(
+   ID_PLANO             NUMBER               not null,
+   ID_TARIFARIO         NUMBER,
+   DATA_PLANO           DATE,
+   DESIGNACAO_PLANO     VARCHAR(100),
+   NOME_PLANO           VARCHAR(30),
+   VALOR_SERVICO        NUMBER,
+   ESTADO_PLANO         VARCHAR(30),
+   MINUTOS_POS_PF       NUMBER,
+   SMS_POS_PF           NUMBER,
+   constraint PK_POS_PAGO_PLAFOND primary key (ID_PLANO)
+);
+
+/*==============================================================*/
+/* Table: POS_PAGO_SIMPLES                                      */
+/*==============================================================*/
+create table POS_PAGO_SIMPLES 
+(
+   ID_PLANO             NUMBER               not null,
+   ID_TARIFARIO         NUMBER,
+   DATA_PLANO           DATE,
+   DESIGNACAO_PLANO     VARCHAR(100),
+   NOME_PLANO           VARCHAR(30),
+   VALOR_SERVICO        NUMBER,
+   ESTADO_PLANO         VARCHAR(30),
+   constraint PK_POS_PAGO_SIMPLES primary key (ID_PLANO)
+);
+
+/*==============================================================*/
+/* Table: PRE_PAGO                                              */
+/*==============================================================*/
+create table PRE_PAGO 
+(
+   ID_PLANO             NUMBER               not null,
+   ID_TARIFARIO         NUMBER,
+   DATA_PLANO           DATE,
+   DESIGNACAO_PLANO     VARCHAR(100),
+   NOME_PLANO           VARCHAR(30),
+   VALOR_SERVICO        NUMBER,
+   ESTADO_PLANO         VARCHAR(30),
+   MINUTOS_PRE_P        NUMBER,
+   SMS_PRE_P            NUMBER,
+   NUM_DIAS             NUMBER,
+   constraint PK_PRE_PAGO primary key (ID_PLANO)
+);
+
+/*==============================================================*/
+/* Table: RECEBIDA                                              */
+/*==============================================================*/
+create table RECEBIDA 
+(
+   ID_TELEMOVEL         NUMBER               not null,
+   ID_SMS               NUMBER               not null,
+   constraint PK_RECEBIDA primary key (ID_TELEMOVEL, ID_SMS)
+);
+
+/*==============================================================*/
+/* Table: SMS                                                   */
+/*==============================================================*/
+create table SMS 
+(
+   ID_SMS               NUMBER               not null,
+   ESTADO_SMS           VARCHAR(30),
+   REMETENTE_SMS        NUMBER,
+   DESTINATARIO_SMS     NUMBER,
+   INSTANTE_SMS         NUMBER,
+   MENSAGEM             VARCHAR(256),
+   constraint PK_SMS primary key (ID_SMS)
+);
+
+/*==============================================================*/
+/* Table: TARIFARIO                                             */
+/*==============================================================*/
+create table TARIFARIO 
+(
+   ID_TARIFARIO         NUMBER               not null,
+   NOME_TARI            VARCHAR(30),
+   DESIGNACAO_TARI      VARCHAR(100),
+   DATA_LANC            DATE,
+   TIPO_TARI            VARCHAR(30),
+   REDE_TARI            VARCHAR(30),
+   ESTADO_TARI          VARCHAR(30),
+   UNIDADE_TARI         VARCHAR(30),
+   PRECO_UNIDADE        NUMBER,
+   constraint PK_TARIFARIO primary key (ID_TARIFARIO)
+);
+
+alter table ATENDIDA
+   add constraint FK_ATENDIDA_REFERENCE_CHAMADAS foreign key (ID_CHAMADA)
+      references CHAMADAS (ID_CHAMADA);
+
+alter table ATENDIDA
+   add constraint FK_ATENDIDA_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table CHAMADAS
+   add constraint FK_CHAMADAS_REFERENCE_CLASSIFI foreign key (ID_CLASSIFICADOR)
+      references CLASSIFICADOR (ID_CLASSIFICADOR);
+
+alter table CONTRATO
+   add constraint FK_CONTRATO_FAZ_CLIENTE foreign key (ID_CLIENTE)
+      references CLIENTE (ID_CLIENTE);
+
+alter table CONTRATO
+   add constraint FK_CONTRATO_SUBSCREVE_PLANOS foreign key (ID_PLANO)
+      references PLANOS (ID_PLANO);
+
+alter table EFETUADA
+   add constraint FK_EFETUADA_REFERENCE_CHAMADAS foreign key (ID_CHAMADA)
+      references CHAMADAS (ID_CHAMADA);
+
+alter table EFETUADA
+   add constraint FK_EFETUADA_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table ENVIADA
+   add constraint FK_ENVIADA_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table ENVIADA
+   add constraint FK_ENVIADA_REFERENCE_SMS foreign key (ID_SMS)
+      references SMS (ID_SMS);
+
+alter table FATURA
+   add constraint FK_FATURA_GERA_CONTRATO foreign key (ID_CONTRATO)
+      references CONTRATO (ID_CONTRATO);
+
+alter table GRUPO
+   add constraint FK_GRUPO_REFERENCE_PARTICIP foreign key (ID_TELEMOVEL, ID_CAMPANHA)
+      references PARTICIPA (ID_TELEMOVEL, ID_CAMPANHA);
+
+alter table NAO_ATENDIDA
+   add constraint FK_NAO_ATEN_REFERENCE_CHAMADAS foreign key (ID_CHAMADA)
+      references CHAMADAS (ID_CHAMADA);
+
+alter table NAO_ATENDIDA
+   add constraint FK_NAO_ATEN_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table NAO_EFETUADA
+   add constraint FK_NAO_EFET_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table NAO_EFETUADA
+   add constraint FK_NAO_EFET_REFERENCE_CHAMADAS foreign key (ID_CHAMADA)
+      references CHAMADAS (ID_CHAMADA);
+
+alter table NAO_ENVIADAS
+   add constraint FK_NAO_ENVI_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table NAO_ENVIADAS
+   add constraint FK_NAO_ENVI_REFERENCE_SMS foreign key (ID_SMS)
+      references SMS (ID_SMS);
+
+alter table NAO_RECEBIDAS
+   add constraint FK_NAO_RECE_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table NAO_RECEBIDAS
+   add constraint FK_NAO_RECE_REFERENCE_SMS foreign key (ID_SMS)
+      references SMS (ID_SMS);
+
+alter table NUMERO_TELEMOVEL
+   add constraint FK_NUMERO_T_REGISTA_CLIENTE foreign key (ID_CLIENTE)
+      references CLIENTE (ID_CLIENTE);
+
+alter table PARTICIPA
+   add constraint FK_PARTICIP_REFERENCE_CAMPANHA foreign key (ID_CAMPANHA)
+      references CAMPANHA (ID_CAMPANHA);
+
+alter table PARTICIPA
+   add constraint FK_PARTICIP_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table PEDE
+   add constraint FK_PEDE_PEDE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table PEDE
+   add constraint FK_PEDE_PEDE2_PACOTES foreign key (ID_PACOTE)
+      references PACOTES (ID_PACOTE);
+
+alter table PLANOS
+   add constraint FK_PLANOS_ASSOCIADO_TARIFARI foreign key (ID_TARIFARIO)
+      references TARIFARIO (ID_TARIFARIO);
+
+alter table POS_PAGO_PLAFOND
+   add constraint FK_POSPAGO_PF_TIPOS_PLANOS foreign key (ID_PLANO)
+      references PLANOS (ID_PLANO);
+
+alter table POS_PAGO_SIMPLES
+   add constraint FK_POSPAGO_S_TIPOS_PLANOS foreign key (ID_PLANO)
+      references PLANOS (ID_PLANO);
+
+alter table PRE_PAGO
+   add constraint FK_PREPAGO_TIPOS_PLANOS foreign key (ID_PLANO)
+      references PLANOS (ID_PLANO);
+
+alter table RECEBIDA
+   add constraint FK_RECEBIDA_REFERENCE_NUMERO_T foreign key (ID_TELEMOVEL)
+      references NUMERO_TELEMOVEL (ID_TELEMOVEL);
+
+alter table RECEBIDA
+   add constraint FK_RECEBIDA_REFERENCE_SMS foreign key (ID_SMS)
+      references SMS (ID_SMS);

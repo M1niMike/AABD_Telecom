@@ -1,0 +1,82 @@
+M)Além das restrições tradicionais exitem outros mecanismos que podem ser utilizados:
+	
+	1. Criar mecanismos através da implementação de triggers e procedimentos
+		para em tempo real identificar dados inconsistentes ou inválidos durante a inserção
+		ou atualização dos mesmos. Pode também envolver a criação de regras de validação 
+		personalizadas e execução de verificações automáticas antes de permitir que haja
+		armazenamento de dados na BD.
+		
+	2. Padronizar e formatar dados. Definir padrões específicos para diferentes
+		tipos de dados, como endereços, códigos, etc.Isto ajudaria a garantir que os dados
+		sejam inseridos de maneira consistente e correta, evitando futuros problemas e inconsistencias.
+		
+	3. Registos de logs
+		Implementar registos de logs para acompanhar todas as alterações
+		feitas aos dados da BD. Permitira rastrear quem, quando, quais e onde foram 
+		feitas as alterações. De certa forma permite verificar existencia de atividade
+		indesejada e suspeita bem como outras violações de segurança por exemplo.
+	
+	4. Controlo de acesso e previlégios(roles)
+		Implementar controlo de acesso aos diferentes utilizadores para que 
+			só utilizadores autorizados tenham permissão para por exemplo inserir,
+			modificar ou excluir dados.
+	
+	
+N)As 5 tabelas com mais dados:
+	
+	1.Evento_SMS
+	2.Evento_Chamada
+	3.SMS
+	4.Chamada
+	5.Contrato
+	
+	Estas tabelas na nossa opinião no normal decorrer do funcionamento
+	da bd são as que vão ter mais dados armazenados, isto porque:
+		- Uma chamada/sms tem varios eventos associados por tanto sempre que ha
+		registo de chamada/sms(são feitos centenas por dia pelo mesmo cliente) existem
+		vários eventos_chamada e eventos_sms respetivamente associados.
+		- Os contratos são obrigatorios portanto devem sempre existir, estão associados
+		sempre a um cliente, e este cliente pode efetuar vários contratos. O que nos leva
+		a pensar que vão existir muitos registos nesta tabela.
+		
+	Considerando o tamanho em disco, número de registos, espaço utilizado para cada coluna etc
+	estas sao as tabelas que elegemos sendo as mais volumosas a nível de dados, espaço etc.
+	
+	De momento como estamos em fase de testes e com apenas poucos dados que não representam
+	a realidade de um contexto de uma bd semelhante a nossa, estamos ainda na casa das dezenas de megabtytes
+	de dados. Acreditamos que com o forte fluxo de uma bd deste tipo rapidamente estes números seriam outros.
+	
+1.Evento_SMS	
+	Número de Linhas: 22 
+    Tamanho médio da linha: 14
+    Espaço usado (bytes): 308
+    Espaço livre (bytes): 40652
+    Espaço total (bytes): 40960
+
+2.Evento_Chamada
+    Número de Linhas: 42
+    Tamanho médio da linha: 14
+    Espaço usado (bytes): 588
+    Espaço livre (bytes): 40372
+    Espaço total (bytes): 40960
+
+3.SMS
+    Número de Linhas: 18
+    Tamanho médio da linha: 171
+    Espaço usado (bytes): 3078
+    Espaço livre (bytes): 37882
+    Espaço total (bytes): 40960
+
+4.Chamada
+    Número de Linhas: 36
+    Tamanho médio da linha: 26
+    Espaço usado (bytes): 936
+    Espaço livre (bytes): 40024
+    Espaço total (bytes): 40960
+
+5.Contrato
+    Número de Linhas: 25
+    Tamanho médio da linha: 99
+    Espaço usado (bytes): 2475
+    Espaço livre (bytes): 38485
+    Espaço total (bytes): 40960
